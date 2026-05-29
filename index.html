@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cadastro de Produtos — M. Ferretti</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --azul:#2B2FA8;
@@ -25,58 +26,73 @@
   header{
     background:linear-gradient(135deg,var(--azul),var(--azul-claro));
     color:#fff;
-    padding:18px 16px 16px;
+    padding:14px 16px 12px;
     position:sticky;top:0;z-index:50;
     box-shadow:0 2px 10px rgba(0,0,0,.15);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
-  header img{height:42px;display:block;margin:0 auto 10px}
-  header h1{font-size:1.15rem;font-weight:600;text-align:center;letter-spacing:.3px}
+  header img{height:38px;display:block;margin:0 auto 8px}
+  header h1{font-size:1.1rem;font-weight:600;text-align:center;letter-spacing:.3px}
 
-  .filtros{max-width:760px;margin:12px auto 0;display:flex;gap:8px;flex-wrap:wrap}
+  .filtros{max-width:760px;margin:10px auto 0;display:flex;gap:8px;flex-wrap:wrap}
   .filtros input,.filtros select{
     flex:1 1 160px;
-    font-size:1.05rem;
-    padding:12px 14px;
+    font-size:1rem;
+    padding:10px 13px;
     border:none;border-radius:10px;
     background:#fff;color:var(--texto);
     box-shadow:0 1px 3px rgba(0,0,0,.1);
   }
   .filtros input:focus,.filtros select:focus{outline:3px solid rgba(255,255,255,.6)}
 
-  .contador{max-width:760px;margin:10px auto 0;font-size:.95rem;color:rgba(255,255,255,.9);text-align:center}
+  .acoes{max-width:760px;margin:8px auto 0;display:flex;gap:8px;justify-content:center}
+  .acoes button{
+    flex:1 1 0;max-width:240px;
+    font-size:.95rem;font-weight:600;
+    padding:9px 12px;border:none;border-radius:10px;cursor:pointer;
+    background:rgba(255,255,255,.18);color:#fff;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .15s;
+  }
+  .acoes button:hover{background:rgba(255,255,255,.32)}
+  .acoes button:active{transform:translateY(1px)}
+
+  .contador{max-width:760px;margin:8px auto 0;font-size:.9rem;color:rgba(255,255,255,.9);text-align:center}
+  .print-info{display:none}
 
   /* Lista */
-  main{max-width:760px;margin:0 auto;padding:14px 12px 60px}
+  main{max-width:760px;margin:0 auto;padding:12px 12px 50px}
 
   .card{
-    background:#fff;border-radius:14px;
+    background:#fff;border-radius:12px;
     box-shadow:0 1px 4px rgba(0,0,0,.08);
-    margin-bottom:16px;overflow:hidden;
+    margin-bottom:12px;overflow:hidden;
     border:1px solid var(--cinza-borda);
   }
   .card-top{
     background:var(--azul);color:#fff;
-    padding:14px 16px;
+    padding:10px 14px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
-  .card-top .cod{font-size:.85rem;opacity:.85;letter-spacing:.5px}
-  .card-top .desc{font-size:1.2rem;font-weight:700;line-height:1.3;margin-top:2px}
+  .card-top .cod{font-size:.8rem;opacity:.85;letter-spacing:.5px}
+  .card-top .desc{font-size:1.08rem;font-weight:700;line-height:1.25;margin-top:1px}
   .card-top .marca{
-    display:inline-block;margin-top:8px;
+    display:inline-block;margin-top:6px;
     background:rgba(255,255,255,.2);
-    padding:3px 10px;border-radius:20px;
-    font-size:.85rem;font-weight:600;
+    padding:2px 9px;border-radius:20px;
+    font-size:.8rem;font-weight:600;
   }
 
-  .bloco{padding:12px 16px;border-top:1px solid var(--cinza-borda)}
+  .bloco{padding:9px 14px;border-top:1px solid var(--cinza-borda)}
   .bloco:first-of-type{border-top:none}
   .bloco h3{
-    font-size:.8rem;text-transform:uppercase;letter-spacing:.8px;
-    color:var(--azul);margin-bottom:10px;font-weight:700;
+    font-size:.74rem;text-transform:uppercase;letter-spacing:.7px;
+    color:var(--azul);margin-bottom:7px;font-weight:700;
   }
-  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px 12px}
   .grid.full{grid-template-columns:1fr}
-  .campo .rotulo{font-size:.78rem;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.3px}
-  .campo .valor{font-size:1.1rem;font-weight:600;line-height:1.3;word-break:break-word}
+  .campo .rotulo{font-size:.72rem;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.3px}
+  .campo .valor{font-size:1rem;font-weight:600;line-height:1.25;word-break:break-word}
   .campo .valor.vazio{color:#aab;font-weight:400}
 
   .vazio-busca{text-align:center;color:var(--texto-suave);padding:50px 20px;font-size:1.1rem}
@@ -84,7 +100,20 @@
   footer{text-align:center;color:var(--texto-suave);font-size:.8rem;padding:0 16px 30px}
 
   @media(min-width:520px){
-    .card-top .desc{font-size:1.3rem}
+    .card-top .desc{font-size:1.18rem}
+  }
+
+  /* Impressão / PDF (cartão por produto) */
+  @media print{
+    body{background:#fff}
+    header{position:static;box-shadow:none;padding:6px 0 4px}
+    header img{height:30px}
+    .filtros,.acoes,footer{display:none !important}
+    .print-info{display:block;max-width:none;margin:4px auto 0;color:#333;font-size:.8rem;text-align:center}
+    main{max-width:none;padding:6px 0}
+    .card{break-inside:avoid;page-break-inside:avoid;box-shadow:none;margin-bottom:8px}
+    .acoes button{display:none}
+    @page{margin:10mm}
   }
 </style>
 </head>
@@ -96,7 +125,12 @@
     <input type="search" id="busca" placeholder="🔎 Buscar por código ou descrição" autocomplete="off">
     <select id="filtroMarca"><option value="">Todas as marcas</option></select>
   </div>
+  <div class="acoes">
+    <button id="btnPdf" type="button">📄 Exportar PDF</button>
+    <button id="btnXlsx" type="button">📊 Exportar XLSX</button>
+  </div>
   <div class="contador" id="contador"></div>
+  <div class="print-info" id="printInfo"></div>
 </header>
 
 <main id="lista"></main>
@@ -110,13 +144,13 @@
   var busca = document.getElementById('busca');
   var filtroMarca = document.getElementById('filtroMarca');
   var contador = document.getElementById('contador');
+  var printInfo = document.getElementById('printInfo');
+  var filtrados = [];   // produtos atualmente exibidos (usado nas exportações)
 
-  // helper: valor ou traço
   function v(x){
     if(x===null||x===undefined||x==='') return '<span class="valor vazio">—</span>';
     return '<span class="valor">'+String(x)+'</span>';
   }
-  // valor com sufixo (ex.: kg, cm, %)
   function vs(x,suf){
     if(x===null||x===undefined||x==='') return '<span class="valor vazio">—</span>';
     return '<span class="valor">'+String(x)+(suf?' '+suf:'')+'</span>';
@@ -132,43 +166,38 @@
     var o=document.createElement('option'); o.value=m; o.textContent=m; filtroMarca.appendChild(o);
   });
 
-  function card(p){
-    var paletizacao = (p.PALETE_LASTRO && p.PALETE_ALT)
+  function paletizacaoStr(p){
+    return (p.PALETE_LASTRO && p.PALETE_ALT)
       ? (p.PALETE_LASTRO+' × '+p.PALETE_ALT+' = '+(p.PALETE_LASTRO*p.PALETE_ALT)+' cx/palete')
       : (p.PALETE_LASTRO||p.PALETE_ALT||'');
+  }
 
+  function card(p){
+    var paletizacao = paletizacaoStr(p);
     return '<article class="card">'
       + '<div class="card-top">'
       +   '<div class="cod">CÓD. '+ (p.CODIGO||'—') +'</div>'
       +   '<div class="desc">'+ (p.DESCRICAO||'Sem descrição') +'</div>'
       +   (p.MARCA? '<span class="marca">'+p.MARCA+'</span>':'')
       + '</div>'
-
-      // Identificação
       + '<div class="bloco"><h3>Identificação</h3><div class="grid">'
       +   campo('Fornecedor', v(p.FORNECEDOR))
       +   campo('Marca', v(p.MARCA))
       +   campo('Código', v(p.CODIGO))
       +   campo('Referência', v(p.REFERENCIA))
-      + '</div><div class="grid full" style="margin-top:10px">'
+      + '</div><div class="grid full" style="margin-top:7px">'
       +   campo('Descrição', v(p.DESCRICAO))
       + '</div></div>'
-
-      // Códigos de barras
       + '<div class="bloco"><h3>Códigos de barras</h3><div class="grid">'
       +   campo('EAN (unidade)', v(p.EAN))
       +   campo('DUN (caixa)', v(p.DUN))
       + '</div></div>'
-
-      // Embalagem
       + '<div class="bloco"><h3>Embalagem</h3><div class="grid">'
       +   campo('Qtde por caixa', v(p.CAIXA))
       +   campo('Lote mínimo', v(p.LOTE_MINIMO))
       +   campo('Validade', v(p.VALIDADE))
       +   campo('Paletização', v(paletizacao))
       + '</div></div>'
-
-      // Fiscal
       + '<div class="bloco"><h3>Fiscal</h3><div class="grid">'
       +   campo('NCM', v(p.NCM))
       +   campo('CEST', v(p.CEST))
@@ -179,11 +208,9 @@
       +   campo('ICMS', v(p.ICMS))
       +   campo('IPI', v(p.IPI))
       +   campo('Origem', v(p.ORIGEM))
-      + '</div><div class="grid full" style="margin-top:10px">'
+      + '</div><div class="grid full" style="margin-top:7px">'
       +   campo('PIS/COFINS', v(p.PIS_COFINS))
       + '</div></div>'
-
-      // Logística
       + '<div class="bloco"><h3>Logística — Item</h3><div class="grid">'
       +   campo('Peso bruto', vs(p.ITEM_PESO_BRUTO, p.ITEM_UN_PESO||'kg'))
       +   campo('Peso líquido', vs(p.ITEM_PESO_LIQ, p.ITEM_UN_PESO||'kg'))
@@ -198,7 +225,6 @@
       +   campo('Comprimento', vs(p.CAIXA_C, p.CAIXA_UN_DIM||'cm'))
       +   campo('Largura', vs(p.CAIXA_L, p.CAIXA_UN_DIM||'cm'))
       + '</div></div>'
-
       + '</article>';
   }
 
@@ -209,7 +235,7 @@
   function render(){
     var q = normaliza(busca.value.trim());
     var m = filtroMarca.value;
-    var filtrados = dados.filter(function(p){
+    filtrados = dados.filter(function(p){
       if(m && p.MARCA!==m) return false;
       if(q){
         var alvo = normaliza((p.CODIGO||'')+' '+(p.DESCRICAO||''));
@@ -218,6 +244,10 @@
       return true;
     });
     contador.textContent = filtrados.length + (filtrados.length===1?' produto':' produtos');
+    var ctx = [];
+    if(m) ctx.push('Marca: '+m);
+    if(busca.value.trim()) ctx.push('Busca: "'+busca.value.trim()+'"');
+    printInfo.textContent = filtrados.length+' produto(s)'+(ctx.length?'  ·  '+ctx.join('  ·  '):'')+'  ·  '+new Date().toLocaleDateString('pt-BR');
     if(filtrados.length===0){
       lista.innerHTML = '<div class="vazio-busca">Nenhum produto encontrado.</div>';
       return;
@@ -225,8 +255,46 @@
     lista.innerHTML = filtrados.map(card).join('');
   }
 
+  // ---- Exportações ----
+  var COLS = [
+    ['CÓDIGO','CODIGO'],['DESCRIÇÃO','DESCRICAO'],['MARCA','MARCA'],['FORNECEDOR','FORNECEDOR'],
+    ['REFERÊNCIA','REFERENCIA'],['EAN','EAN'],['DUN','DUN'],['QTDE/CAIXA','CAIXA'],
+    ['LOTE MÍNIMO','LOTE_MINIMO'],['VALIDADE','VALIDADE'],
+    ['NCM','NCM'],['CEST','CEST'],['CFOP','CFOP'],['CST','CST'],
+    ['IVA ENTRADA','IVA_ENTRADA'],['IVA SAÍDA','IVA_SAIDA'],['ICMS','ICMS'],['IPI','IPI'],
+    ['ORIGEM','ORIGEM'],['PIS/COFINS','PIS_COFINS'],
+    ['PESO BRUTO ITEM','ITEM_PESO_BRUTO'],['PESO LÍQ ITEM','ITEM_PESO_LIQ'],
+    ['A ITEM (cm)','ITEM_A'],['C ITEM (cm)','ITEM_C'],['L ITEM (cm)','ITEM_L'],
+    ['PESO BRUTO CAIXA','CAIXA_PESO_BRUTO'],['PESO LÍQ CAIXA','CAIXA_PESO_LIQ'],
+    ['A CAIXA (cm)','CAIXA_A'],['C CAIXA (cm)','CAIXA_C'],['L CAIXA (cm)','CAIXA_L'],
+    ['LASTRO','PALETE_LASTRO'],['ALT. PALETE','PALETE_ALT'],['CX/PALETE','_PALETE_TOTAL']
+  ];
+  function exportarXLSX(){
+    if(!filtrados.length){ alert('Não há produtos filtrados para exportar.'); return; }
+    if(typeof XLSX==='undefined'){ alert('Biblioteca de exportação não carregou (precisa de internet).'); return; }
+    var aoa = [ COLS.map(function(c){return c[0];}) ];
+    filtrados.forEach(function(p){
+      aoa.push(COLS.map(function(c){
+        if(c[1]==='_PALETE_TOTAL'){ return (p.PALETE_LASTRO&&p.PALETE_ALT)? (p.PALETE_LASTRO*p.PALETE_ALT):''; }
+        var val=p[c[1]]; return (val===null||val===undefined)?'':val;
+      }));
+    });
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = COLS.map(function(c){ return {wch: Math.max(10, c[0].length+2)}; });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Cadastro');
+    var hoje = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, 'cadastro-produtos-'+hoje+'.xlsx');
+  }
+  function exportarPDF(){
+    if(!filtrados.length){ alert('Não há produtos filtrados para exportar.'); return; }
+    window.print();
+  }
+
   busca.addEventListener('input', render);
   filtroMarca.addEventListener('change', render);
+  document.getElementById('btnXlsx').addEventListener('click', exportarXLSX);
+  document.getElementById('btnPdf').addEventListener('click', exportarPDF);
   render();
 })();
 </script>
