@@ -1,0 +1,44 @@
+﻿name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy (tentativa 1)
+        id: d1
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Aguardar antes da tentativa 2
+        if: steps.d1.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy (tentativa 2)
+        id: d2
+        if: steps.d1.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Aguardar antes da tentativa 3
+        if: steps.d2.outcome == 'failure'
+        run: sleep 60
+      - name: Deploy (tentativa 3)
+        if: steps.d2.outcome == 'failure'
+        uses: actions/deploy-pages@v5
